@@ -2,6 +2,8 @@ import { Controller, Post, Body, ValidationPipe, HttpException, HttpStatus } fro
 import { AuthService } from './auth.service';
 import { UserDto } from '../users/dto/user.dto';
 import { JwtService } from 'src/jwt/jwt.service';
+import { UserWithoutEmailDto } from 'src/users/dto/userWithoutEmail.dto';
+import { TokenDto } from 'src/users/dto/token.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -16,8 +18,10 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body(new ValidationPipe()) userDto: UserDto): Promise<any> {
-    const { username, password } = userDto;
+  async login(
+    @Body(new ValidationPipe()) userWithoutEmailDto: UserWithoutEmailDto
+  ): Promise<any> {
+    const { username, password } = userWithoutEmailDto;
 
     const user = await this.authService.validateUser(username, password);
 
@@ -25,11 +29,18 @@ export class AuthController {
       throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
     }
 
-    // If the user is found and credentials are valid, proceed with your logic (e.g., generate JWT token)
-    // For example:
-    const token = this.jwtService.generateToken(user); // Replace this with your token generation logic
+    const token = this.jwtService.generateToken(user);
 
-    // Return whatever data you need for successful login (e.g., token, user info)
     return { token, user };
+  }
+
+  @Post('verify')
+  async verify(@Body(new ValidationPipe()) tokenDto: TokenDto): Promise<any> {
+    const { token } = tokenDto;
+    const isValid = this.jwtService.verifyToken(token);
+    if (!isValid) {
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
+    }
+    return { isValid: true };
   }
 }
